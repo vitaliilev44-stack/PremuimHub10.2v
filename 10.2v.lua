@@ -1,91 +1,33 @@
 -- ==========================================
---  PREMIUMHUB v11.0
---  - Перетаскивание меню (мышь/тач)
---  - Кнопка-якорь (кружок) для телефона
---  - Ключи: вечные + 7-дневный (1RAXQ6pb)
---  - Временный ключ на 1 день удалён
+--  PREMIUMHUB v10.1  (принудительная проверка ключа)
+--  Ключи: 0ka4MFlC (вечный)
+--  Второй ключ: 0003e9eae51e58e9488af788f3626915c9e4223c35533476a9f3f42ce9ba6c5156d3f05afaa9e73885b6dc591779a9bfdd8828af2c77fcfe8c9e559a322f6c87
+--  Окно ввода появляется при каждом запуске скрипта.
 -- ==========================================
 
 local player = game.Players.LocalPlayer
 local userInput = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
-local HttpService = game:GetService("HttpService")
-local tweenService = game:GetService("TweenService")
 
 -- ==========================================
---  КОНФИГУРАЦИЯ КЛЮЧЕЙ
+--  ВАЛИДНЫЕ КЛЮЧИ (явно указаны)
 -- ==========================================
-local KEYS_CONFIG = {
-    -- Вечные ключи
-    ["0ka4MFlC"] = { type = "permanent" },
-    ["0003e9eae51e58e9488af788f3626915c9e4223c35533476a9f3f42ce9ba6c5156d3f05afaa9e73885b6dc591779a9bfdd8828af2c77fcfe8c9e559a322f6c87"] = { type = "permanent" },
-    -- Ключ на 7 дней
-    ["1RAXQ6pb"] = { type = "temporary", duration = 604800 }, -- 7 дней в секундах
+local VALID_KEYS = {
+    "0ka4MFlC",
+    "0003e9eae51e58e9488af788f3626915c9e4223c35533476a9f3f42ce9ba6c5156d3f05afaa9e73885b6dc591779a9bfdd8828af2c77fcfe8c9e559a322f6c87"
 }
-
--- ==========================================
---  ФУНКЦИИ ДЛЯ РАБОТЫ С ХРАНИЛИЩЕМ
--- ==========================================
-local function saveData(key, value)
-    local success, err = pcall(function()
-        writefile("PremiumHub_" .. key .. ".txt", tostring(value))
-    end)
-    if success then return true end
-    pcall(function()
-        player:SetAttribute("PremiumHub_" .. key, value)
-    end)
-    return false
-end
-
-local function loadData(key)
-    local success, data = pcall(function()
-        return readfile("PremiumHub_" .. key .. ".txt")
-    end)
-    if success and data then
-        return data
-    end
-    local attr = player:GetAttribute("PremiumHub_" .. key)
-    if attr ~= nil then
-        return tostring(attr)
-    end
-    return nil
-end
 
 -- ==========================================
 --  ФУНКЦИЯ ПРОВЕРКИ КЛЮЧА
 -- ==========================================
-local function validateKey(inputKey)
-    local config = KEYS_CONFIG[inputKey]
-    if not config then
-        return false, "Неверный ключ!"
-    end
-
-    if config.type == "permanent" then
-        return true, "Ключ активирован (вечный)"
-    end
-
-    if config.type == "temporary" then
-        local savedTime = loadData("temp_key_time")
-        if savedTime then
-            savedTime = tonumber(savedTime)
-            local currentTime = os.time()
-            local elapsed = currentTime - savedTime
-            if elapsed < config.duration then
-                local daysLeft = math.floor((config.duration - elapsed) / 86400)
-                local hoursLeft = math.floor(((config.duration - elapsed) % 86400) / 3600)
-                return true, string.format("Ключ активен (осталось %dд %02dч)", daysLeft, hoursLeft)
-            else
-                return false, "Срок действия ключа истёк!"
-            end
-        else
-            local currentTime = os.time()
-            saveData("temp_key_time", currentTime)
-            return true, "Ключ активирован на 7 дней"
+local function checkKey(inputKey)
+    for _, valid in ipairs(VALID_KEYS) do
+        if inputKey == valid then
+            return true
         end
     end
-
-    return false, "Неизвестная ошибка"
+    return false
 end
 
 -- ==========================================
@@ -98,8 +40,8 @@ local function createKeyWindow()
     guiKey.ResetOnSpawn = false
 
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 380, 0, 200)
-    frame.Position = UDim2.new(0.5, -190, 0.5, -100)
+    frame.Size = UDim2.new(0, 380, 0, 180)
+    frame.Position = UDim2.new(0.5, -190, 0.5, -90)
     frame.BackgroundColor3 = Color3.fromRGB(45, 20, 30)
     frame.BorderSizePixel = 0
     frame.Parent = guiKey
@@ -134,7 +76,7 @@ local function createKeyWindow()
 
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0.4, 0, 0, 36)
-    button.Position = UDim2.new(0.3, 0, 0.60, 0)
+    button.Position = UDim2.new(0.3, 0, 0.65, 0)
     button.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
     button.Text = "Подтвердить"
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -147,7 +89,7 @@ local function createKeyWindow()
 
     local errorLabel = Instance.new("TextLabel")
     errorLabel.Size = UDim2.new(0.8, 0, 0, 24)
-    errorLabel.Position = UDim2.new(0.1, 0, 0.80, 0)
+    errorLabel.Position = UDim2.new(0.1, 0, 0.85, 0)
     errorLabel.BackgroundTransparency = 1
     errorLabel.Text = ""
     errorLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -164,13 +106,11 @@ local function createKeyWindow()
 
     button.MouseButton1Click:Connect(function()
         local inputKey = textBox.Text
-        local valid, message = validateKey(inputKey)
-        if valid then
+        if checkKey(inputKey) then
             guiKey:Destroy()
-            print("[PremiumHub] " .. message)
             createMainMenu()
         else
-            errorLabel.Text = message
+            errorLabel.Text = "Неверный ключ! Попробуйте снова."
             errorLabel.Visible = true
             textBox.Text = ""
         end
@@ -199,7 +139,6 @@ function createMainMenu()
     -- ==========================================
     local currentWS = 16
     local currentJP = 50
-    local menuVisible = true
 
     -- ==========================================
     --  СОЗДАНИЕ GUI МЕНЮ
@@ -209,53 +148,6 @@ function createMainMenu()
     gui.Parent = player:WaitForChild("PlayerGui")
     gui.ResetOnSpawn = false
 
-    -- ==========================================
-    --  КНОПКА-ЯКОРЬ (кружок) для телефона
-    -- ==========================================
-    local anchorBtn = Instance.new("TextButton")
-    anchorBtn.Size = UDim2.new(0, 60, 0, 60)
-    anchorBtn.Position = UDim2.new(1, -75, 1, -80)
-    anchorBtn.BackgroundColor3 = COLORS.Accent
-    anchorBtn.Text = "≡"
-    anchorBtn.TextColor3 = COLORS.Text
-    anchorBtn.TextSize = 30
-    anchorBtn.Font = Enum.Font.GothamBold
-    anchorBtn.BorderSizePixel = 0
-    anchorBtn.Visible = false
-    anchorBtn.Parent = gui
-    local anchorCorner = Instance.new("UICorner")
-    anchorCorner.CornerRadius = UDim.new(1, 0)
-    anchorCorner.Parent = anchorBtn
-
-    -- Тень для кнопки
-    local anchorShadow = Instance.new("Frame")
-    anchorShadow.Size = UDim2.new(1, 0, 1, 0)
-    anchorShadow.Position = UDim2.new(0, 4, 0, 4)
-    anchorShadow.BackgroundColor3 = COLORS.Shadow
-    anchorShadow.BackgroundTransparency = 0.5
-    anchorShadow.BorderSizePixel = 0
-    anchorShadow.ZIndex = -1
-    anchorShadow.Parent = anchorBtn
-    local anchorShadowCorner = Instance.new("UICorner")
-    anchorShadowCorner.CornerRadius = UDim.new(1, 0)
-    anchorShadowCorner.Parent = anchorShadow
-
-    anchorBtn.MouseButton1Click:Connect(function()
-        frame.Visible = true
-        anchorBtn.Visible = false
-        menuVisible = true
-    end)
-
-    -- Для мобильных устройств
-    anchorBtn.TouchTap:Connect(function()
-        frame.Visible = true
-        anchorBtn.Visible = false
-        menuVisible = true
-    end)
-
-    -- ==========================================
-    --  ГЛАВНОЕ ОКНО МЕНЮ (с поддержкой перетаскивания)
-    -- ==========================================
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 440, 0, 420)
     frame.Position = UDim2.new(0.5, -220, 0.5, -210)
@@ -281,61 +173,6 @@ function createMainMenu()
     shadowCorner.CornerRadius = UDim.new(0, 20)
     shadowCorner.Parent = shadow
 
-    -- Перетаскивание меню
-    local dragStart = nil
-    local dragOffset = nil
-    local isDragging = false
-
-    local function startDrag(input)
-        dragStart = input.Position
-        dragOffset = Vector2.new(frame.AbsolutePosition.X - input.Position.X, frame.AbsolutePosition.Y - input.Position.Y)
-        isDragging = true
-    end
-
-    local function updateDrag(input)
-        if not isDragging or not dragStart then return end
-        local delta = input.Position - dragStart
-        local newPos = UDim2.new(0, dragOffset.X + delta.X, 0, dragOffset.Y + delta.Y)
-        frame.Position = newPos
-    end
-
-    local function endDrag()
-        isDragging = false
-        dragStart = nil
-        dragOffset = nil
-    end
-
-    -- Мышь
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            startDrag(input)
-        end
-    end)
-    userInput.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateDrag(input)
-        end
-    end)
-    userInput.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            endDrag()
-        end
-    end)
-
-    -- Тач (для телефонов)
-    frame.TouchBegan:Connect(function(touch)
-        startDrag(touch)
-    end)
-    frame.TouchMoved:Connect(function(touch)
-        updateDrag(touch)
-    end)
-    frame.TouchEnded:Connect(function()
-        endDrag()
-    end)
-
-    -- ==========================================
-    --  ЗАГОЛОВОК И КНОПКА ЗАКРЫТИЯ
-    -- ==========================================
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 40)
     title.Position = UDim2.new(0, 0, 0, 0)
@@ -357,8 +194,6 @@ function createMainMenu()
     closeBtn.Parent = frame
     closeBtn.MouseButton1Click:Connect(function()
         frame.Visible = false
-        anchorBtn.Visible = true
-        menuVisible = false
     end)
 
     -- ==========================================
@@ -752,8 +587,6 @@ function createMainMenu()
     -- ==========================================
     player.CharacterAdded:Connect(function(char)
         frame.Visible = true
-        anchorBtn.Visible = false
-        menuVisible = true
         local humanoid = char:WaitForChild("Humanoid")
         humanoid.WalkSpeed = currentWS
         humanoid.JumpPower = currentJP
@@ -771,9 +604,7 @@ function createMainMenu()
         if gameProcessed then return end
         local key = input.KeyCode
         if key == BINDS.TOGGLE_MENU then
-            menuVisible = not menuVisible
-            frame.Visible = menuVisible
-            anchorBtn.Visible = not menuVisible
+            frame.Visible = not frame.Visible
         end
         if key == BINDS.TOGGLE_AIMBOT then
             toggleAimbot()
@@ -823,5 +654,6 @@ end
 
 -- ==========================================
 --  ЗАПУСК: ВСЕГДА ПОКАЗЫВАЕМ ОКНО ВВОДА КЛЮЧА
+--  (принудительная проверка при каждом запуске)
 -- ==========================================
 createKeyWindow()
